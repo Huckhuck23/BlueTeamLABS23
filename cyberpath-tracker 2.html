@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CyberPath — Operasi SOC Analyst</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0a0e14;
+    --panel:#111722;
+    --panel-2:#161e2b;
+    --line:#222c3a;
+    --line-soft:#1a2230;
+    --ink:#e2e8f0;
+    --ink-dim:#94a3b8;
+    --ink-faint:#5b6878;
+    --go:#2dd4bf;
+    --active:#60a5fa;
+    --warn:#fbbf24;
+    --crit:#fb7185;
+    --glow:rgba(96,165,250,.30);
+    --go-glow:rgba(45,212,191,.25);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(900px 500px at 78% -8%, rgba(96,165,250,.10), transparent 60%),
+      radial-gradient(700px 500px at 0% 100%, rgba(45,212,191,.06), transparent 55%);
+  }
+  .wrap{max-width:1060px;margin:0 auto;padding:0 20px;position:relative;z-index:1}
+  .mono{font-family:'JetBrains Mono',monospace}
+
+  /* ── TOP BAR ── */
+  header{
+    border-bottom:1px solid var(--line);
+    background:rgba(10,14,20,.82);
+    backdrop-filter:blur(12px);
+    position:sticky;top:0;z-index:50;
+  }
+  .bar{display:flex;align-items:center;justify-content:space-between;gap:16px;
+    max-width:1060px;margin:0 auto;padding:13px 20px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--go);
+    box-shadow:0 0 12px var(--go);animation:blink 2.4s ease-in-out infinite}
+  .brand b{font-family:'Space Grotesk';font-weight:700;letter-spacing:.5px;font-size:1.02rem}
+  .brand b span{color:var(--active)}
+  .bar .mini{font-family:'JetBrains Mono';font-size:.62rem;letter-spacing:1.5px;
+    color:var(--ink-faint);text-transform:uppercase}
+  .bar .mini b{color:var(--go);font-weight:700}
+
+  /* ── HERO ── */
+  .hero{display:grid;grid-template-columns:1fr auto;gap:40px;align-items:center;
+    padding:54px 0 38px}
+  .eyebrow{font-family:'JetBrains Mono';font-size:.66rem;letter-spacing:3px;
+    color:var(--active);text-transform:uppercase;margin-bottom:14px;
+    display:flex;align-items:center;gap:9px}
+  .eyebrow::before{content:'';width:22px;height:1px;background:var(--active);display:inline-block}
+  .hero h1{font-family:'Space Grotesk';font-weight:700;font-size:clamp(2rem,5.2vw,3.1rem);
+    line-height:1.04;letter-spacing:-1px;margin-bottom:14px}
+  .hero h1 em{font-style:normal;color:var(--active)}
+  .hero p{color:var(--ink-dim);max-width:46ch;font-size:1.02rem}
+  .hero p b{color:var(--ink)}
+
+  /* gauge */
+  .gauge{position:relative;width:188px;height:188px;flex-shrink:0}
+  .gauge svg{transform:rotate(-90deg)}
+  .gauge .track{fill:none;stroke:var(--line);stroke-width:11}
+  .gauge .fill{fill:none;stroke:var(--active);stroke-width:11;stroke-linecap:round;
+    filter:drop-shadow(0 0 6px var(--glow));
+    transition:stroke-dashoffset 1s cubic-bezier(.4,0,.2,1),stroke .6s ease}
+  .gauge .center{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center}
+  .gauge .pct{font-family:'JetBrains Mono';font-weight:700;font-size:2.5rem;
+    letter-spacing:-1px;line-height:1}
+  .gauge .pct small{font-size:1rem;color:var(--ink-faint)}
+  .gauge .status{font-family:'JetBrains Mono';font-size:.6rem;letter-spacing:1.5px;
+    text-transform:uppercase;color:var(--active);margin-top:7px;
+    border:1px solid var(--line);border-radius:20px;padding:3px 11px}
+  .gauge .sub{font-size:.62rem;color:var(--ink-faint);margin-top:6px}
+
+  /* ── STAT STRIP ── */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:56px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:15px 16px}
+  .stat .n{font-family:'JetBrains Mono';font-weight:700;font-size:1.45rem}
+  .stat .l{font-size:.72rem;color:var(--ink-faint);margin-top:3px;letter-spacing:.3px}
+
+  /* ── SECTION TITLES ── */
+  .sec-title{font-family:'JetBrains Mono';font-size:.68rem;letter-spacing:3px;
+    color:var(--ink-dim);text-transform:uppercase;display:flex;align-items:center;
+    gap:13px;margin-bottom:26px}
+  .sec-title::after{content:'';flex:1;height:1px;background:var(--line)}
+  .sec-title b{color:var(--active);font-weight:700}
+
+  /* ── TIMELINE ── */
+  .timeline{position:relative;padding-left:46px;margin-bottom:62px}
+  .timeline::before{content:'';position:absolute;left:17px;top:8px;bottom:8px;width:2px;
+    background:linear-gradient(var(--line),var(--line-soft))}
+  .phase{position:relative;margin-bottom:16px}
+  .node{position:absolute;left:-46px;top:18px;width:36px;height:36px;border-radius:50%;
+    background:var(--panel);border:2px solid var(--line);display:flex;align-items:center;
+    justify-content:center;font-family:'JetBrains Mono';font-weight:700;font-size:.82rem;
+    color:var(--ink-faint);z-index:2;transition:all .45s ease}
+  .phase.current .node{border-color:var(--active);color:var(--active);
+    box-shadow:0 0 0 4px rgba(96,165,250,.12),0 0 16px var(--glow)}
+  .phase.done .node{border-color:var(--go);color:#06251f;background:var(--go);
+    box-shadow:0 0 16px var(--go-glow)}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .phase.current .card{border-color:rgba(96,165,250,.4)}
+  .phase.done .card{border-color:rgba(45,212,191,.32)}
+
+  .chead{padding:18px 20px;cursor:pointer;display:flex;align-items:center;gap:16px;
+    user-select:none}
+  .chead .meta{flex:1;min-width:0}
+  .ctag{font-family:'JetBrains Mono';font-size:.6rem;letter-spacing:2px;color:var(--ink-faint);
+    text-transform:uppercase;display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:5px}
+  .ctag .dur{color:var(--warn)}
+  .phase.current .ctag .ph{color:var(--active)}
+  .phase.done .ctag .ph{color:var(--go)}
+  .chead h3{font-family:'Space Grotesk';font-weight:600;font-size:1.18rem;letter-spacing:-.3px}
+  .chead .desc{color:var(--ink-dim);font-size:.86rem;margin-top:2px}
+
+  .pmeter{display:flex;align-items:center;gap:11px;flex-shrink:0}
+  .pmeter .pp{font-family:'JetBrains Mono';font-size:.74rem;color:var(--ink-dim);
+    min-width:34px;text-align:right}
+  .ptrack{width:60px;height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+  .pbar{height:100%;width:0;background:var(--active);border-radius:3px;
+    transition:width .6s ease}
+  .phase.done .pbar{background:var(--go)}
+  .chev{color:var(--ink-faint);font-size:.8rem;transition:transform .3s ease;flex-shrink:0}
+  .phase.open .chev{transform:rotate(180deg);color:var(--active)}
+
+  .cbody{max-height:0;overflow:hidden;transition:max-height .4s ease}
+  .phase.open .cbody{max-height:1600px}
+  .cbody-inner{padding:4px 20px 22px;border-top:1px solid var(--line-soft)}
+
+  .outcome{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:10px;
+    padding:13px 15px;margin:16px 0;font-size:.86rem;color:var(--ink-dim)}
+  .outcome b{color:var(--go);font-family:'JetBrains Mono';font-size:.64rem;letter-spacing:1.5px;
+    text-transform:uppercase;display:block;margin-bottom:5px}
+
+  .lbl{font-family:'JetBrains Mono';font-size:.62rem;letter-spacing:1.5px;color:var(--ink-faint);
+    text-transform:uppercase;margin:18px 0 10px}
+
+  .topic{display:flex;gap:12px;align-items:flex-start;padding:9px 0;cursor:pointer;
+    border-bottom:1px solid var(--line-soft)}
+  .topic:last-child{border-bottom:none}
+  .box{width:19px;height:19px;border-radius:6px;border:2px solid var(--line);flex-shrink:0;
+    margin-top:2px;display:flex;align-items:center;justify-content:center;
+    transition:all .2s ease;position:relative}
+  .box svg{width:11px;height:11px;opacity:0;transform:scale(.5);transition:all .2s ease}
+  .topic.checked .box{background:var(--go);border-color:var(--go)}
+  .topic.checked .box svg{opacity:1;transform:scale(1)}
+  .topic .tx b{font-weight:600;font-size:.92rem;display:block;transition:color .2s}
+  .topic.checked .tx b{color:var(--ink-faint);text-decoration:line-through}
+  .topic .tx span{font-size:.79rem;color:var(--ink-faint)}
+
+  /* topic ask button */
+  .topic-ask{margin-left:auto;flex-shrink:0;background:transparent;border:1px solid var(--line);
+    color:var(--ink-faint);border-radius:6px;padding:3px 8px;font-family:'JetBrains Mono';
+    font-size:.55rem;letter-spacing:.5px;cursor:pointer;transition:all .2s;white-space:nowrap}
+  .topic-ask:hover{border-color:var(--active);color:var(--active)}
+
+  .res{display:flex;flex-wrap:wrap;gap:8px}
+  .res a{display:inline-flex;align-items:center;gap:8px;text-decoration:none;
+    background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+    padding:7px 12px;font-size:.8rem;color:var(--ink);transition:all .2s}
+  .res a:hover{border-color:var(--active);transform:translateY(-1px);color:#fff}
+  .res a .pill{font-family:'JetBrains Mono';font-size:.54rem;letter-spacing:.5px;
+    text-transform:uppercase;padding:2px 6px;border-radius:4px}
+  .pill.free{background:rgba(45,212,191,.12);color:var(--go)}
+  .pill.paid{background:rgba(251,191,36,.12);color:var(--warn)}
+
+  .labs{list-style:none}
+  .labs li{font-size:.85rem;color:var(--ink-dim);padding:6px 0 6px 20px;position:relative}
+  .labs li::before{content:'▸';position:absolute;left:0;color:var(--active)}
+
+  .check-tip{display:flex;gap:11px;align-items:flex-start;margin-top:18px;
+    background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.2);
+    border-radius:10px;padding:13px 15px}
+  .check-tip .ic{font-size:1rem;flex-shrink:0}
+  .check-tip .tx{font-size:.84rem;color:var(--ink-dim)}
+  .check-tip .tx b{color:var(--active);font-family:'JetBrains Mono';font-size:.6rem;
+    letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:4px}
+
+  /* ── WEEKLY ── */
+  .week{display:grid;grid-template-columns:repeat(7,1fr);gap:9px;margin-bottom:60px}
+  .day{background:var(--panel);border:1px solid var(--line);border-radius:11px;
+    padding:14px 11px;text-align:center}
+  .day .d{font-family:'JetBrains Mono';font-size:.6rem;letter-spacing:1.5px;
+    color:var(--ink-faint);text-transform:uppercase;margin-bottom:9px}
+  .day.wknd{border-color:rgba(96,165,250,.28)}
+  .day.wknd .d{color:var(--active)}
+  .day .act{font-size:.8rem;font-weight:500;line-height:1.4}
+  .day .hrs{font-family:'JetBrains Mono';font-size:.62rem;color:var(--ink-faint);margin-top:7px}
+
+  /* ── TRAPS ── */
+  .traps{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:12px;margin-bottom:60px}
+  .trap{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--crit);
+    border-radius:10px;padding:15px 16px}
+  .trap b{display:block;font-size:.92rem;margin-bottom:5px}
+  .trap span{font-size:.82rem;color:var(--ink-dim)}
+
+  /* ── LADDER ── */
+  .ladder{margin-bottom:56px}
+  .rung{display:flex;align-items:center;gap:16px;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;padding:15px 18px;margin-bottom:9px;
+    transition:border-color .2s}
+  .rung:hover{border-color:var(--active)}
+  .rung .lv{font-family:'JetBrains Mono';font-weight:700;font-size:.72rem;color:var(--active);
+    border:1px solid var(--line);border-radius:7px;padding:5px 9px;flex-shrink:0;min-width:46px;text-align:center}
+  .rung .role{flex:1;min-width:0}
+  .rung .role b{font-family:'Space Grotesk';font-weight:600;font-size:1rem;display:block}
+  .rung .role span{font-size:.79rem;color:var(--ink-faint)}
+  .rung .pay{font-family:'JetBrains Mono';font-size:.84rem;color:var(--go);text-align:right;flex-shrink:0}
+  .rung .pay small{display:block;color:var(--ink-faint);font-size:.62rem;margin-top:2px}
+
+  /* ── FOOTER ── */
+  footer{border-top:1px solid var(--line);padding:30px 0 50px;text-align:center}
+  .quote{font-family:'Space Grotesk';font-size:1.05rem;color:var(--ink-dim);
+    max-width:48ch;margin:0 auto 22px}
+  .quote b{color:var(--ink)}
+  .reset{font-family:'JetBrains Mono';font-size:.66rem;letter-spacing:1px;
+    background:transparent;border:1px solid var(--line);color:var(--ink-faint);
+    padding:8px 16px;border-radius:8px;cursor:pointer;transition:all .2s}
+  .reset:hover{border-color:var(--crit);color:var(--crit)}
+  .fnote{font-family:'JetBrains Mono';font-size:.58rem;color:var(--ink-faint);
+    letter-spacing:.5px;margin-top:18px}
+  .fnote b{color:var(--go)}
+
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+
+  /* ══════════════════════════════════════════
+     FLOATING AI MENTOR
+  ══════════════════════════════════════════ */
+
+  /* Bubble trigger */
+  #mentorBubble{
+    position:fixed;bottom:28px;right:28px;z-index:200;
+    width:58px;height:58px;border-radius:50%;
+    background:linear-gradient(135deg,#1e3a5f,#0f2240);
+    border:1.5px solid var(--active);
+    box-shadow:0 0 0 0 rgba(96,165,250,.4);
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:transform .2s ease,box-shadow .3s ease;
+    animation:mentorPulse 3s ease-in-out infinite;
+  }
+  #mentorBubble:hover{transform:scale(1.08)}
+  #mentorBubble.open{animation:none;box-shadow:0 0 0 3px rgba(96,165,250,.3)}
+  #mentorBubble svg{width:26px;height:26px;fill:none;stroke:var(--active);stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round}
+  .bubble-badge{position:absolute;top:-3px;right:-3px;width:16px;height:16px;
+    border-radius:50%;background:var(--go);border:2px solid var(--bg);
+    font-family:'JetBrains Mono';font-size:.5rem;font-weight:700;color:#06251f;
+    display:flex;align-items:center;justify-content:center}
+  @keyframes mentorPulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(96,165,250,.4)}
+    50%{box-shadow:0 0 0 10px rgba(96,165,250,.0)}
+  }
+
+  /* Chat panel */
+  #mentorPanel{
+    position:fixed;bottom:100px;right:28px;z-index:199;
+    width:380px;max-width:calc(100vw - 40px);
+    background:var(--panel);border:1px solid rgba(96,165,250,.35);
+    border-radius:18px;overflow:hidden;
+    box-shadow:0 24px 64px rgba(0,0,0,.6),0 0 0 1px rgba(96,165,250,.1);
+    display:flex;flex-direction:column;
+    transform:translateY(16px) scale(.96);opacity:0;
+    pointer-events:none;
+    transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .25s ease;
+    max-height:560px;
+  }
+  #mentorPanel.open{transform:translateY(0) scale(1);opacity:1;pointer-events:all}
+
+  .mentor-header{
+    padding:14px 16px 12px;
+    border-bottom:1px solid var(--line-soft);
+    display:flex;align-items:center;gap:10px;
+    background:linear-gradient(135deg,rgba(96,165,250,.08),rgba(45,212,191,.04));
+    flex-shrink:0;
+  }
+  .mentor-avatar{
+    width:34px;height:34px;border-radius:50%;
+    background:linear-gradient(135deg,#1e3a5f,#0f2240);
+    border:1.5px solid rgba(96,165,250,.5);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .mentor-avatar svg{width:18px;height:18px;fill:none;stroke:var(--active);stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round}
+  .mentor-info{flex:1}
+  .mentor-name{font-family:'Space Grotesk';font-weight:600;font-size:.88rem;letter-spacing:.2px}
+  .mentor-status{font-family:'JetBrains Mono';font-size:.56rem;letter-spacing:1px;
+    color:var(--go);text-transform:uppercase;display:flex;align-items:center;gap:5px}
+  .mentor-status::before{content:'';width:6px;height:6px;border-radius:50%;
+    background:currentColor;display:inline-block;animation:blink 2s infinite}
+  .mentor-close{background:none;border:none;color:var(--ink-faint);cursor:pointer;
+    font-size:1.1rem;padding:4px;border-radius:6px;transition:color .2s}
+  .mentor-close:hover{color:var(--ink)}
+
+  /* Suggested questions */
+  .mentor-suggestions{
+    padding:10px 12px 8px;border-bottom:1px solid var(--line-soft);
+    display:flex;flex-wrap:wrap;gap:6px;flex-shrink:0;
+  }
+  .sugg{font-family:'JetBrains Mono';font-size:.58rem;letter-spacing:.3px;
+    background:rgba(96,165,250,.07);border:1px solid rgba(96,165,250,.2);
+    color:var(--ink-dim);border-radius:20px;padding:4px 10px;cursor:pointer;
+    transition:all .2s;white-space:nowrap}
+  .sugg:hover{background:rgba(96,165,250,.15);color:var(--ink);border-color:var(--active)}
+
+  /* Messages */
+  #mentorMessages{
+    flex:1;overflow-y:auto;padding:14px 14px 8px;
+    display:flex;flex-direction:column;gap:10px;
+    min-height:0;
+  }
+  .msg{display:flex;gap:8px;align-items:flex-start;animation:msgIn .2s ease}
+  .msg.user{flex-direction:row-reverse}
+  @keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .msg-bubble{
+    max-width:82%;padding:9px 12px;border-radius:14px;
+    font-size:.83rem;line-height:1.55;
+  }
+  .msg.bot .msg-bubble{
+    background:var(--panel-2);border:1px solid var(--line-soft);
+    color:var(--ink);border-bottom-left-radius:4px;
+  }
+  .msg.user .msg-bubble{
+    background:linear-gradient(135deg,#1a3a6b,#0f2a52);
+    border:1px solid rgba(96,165,250,.3);
+    color:var(--ink);border-bottom-right-radius:4px;
+  }
+  .msg-avatar{
+    width:26px;height:26px;border-radius:50%;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:.72rem;
+  }
+  .msg.bot .msg-avatar{background:linear-gradient(135deg,#1e3a5f,#0f2240);
+    border:1px solid rgba(96,165,250,.3)}
+  .msg.bot .msg-avatar svg{width:14px;height:14px;fill:none;stroke:var(--active);stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round}
+  .msg.user .msg-avatar{background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.2);
+    font-family:'JetBrains Mono';font-size:.6rem;font-weight:700;color:var(--active)}
+
+  /* Typing indicator */
+  .typing-indicator{display:flex;gap:4px;padding:8px 4px;align-items:center}
+  .typing-dot{width:7px;height:7px;border-radius:50%;background:var(--ink-faint);
+    animation:typingBounce 1.2s ease-in-out infinite}
+  .typing-dot:nth-child(2){animation-delay:.2s}
+  .typing-dot:nth-child(3){animation-delay:.4s}
+  @keyframes typingBounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+
+  /* Context chip */
+  .ctx-chip{
+    background:rgba(45,212,191,.07);border:1px solid rgba(45,212,191,.2);
+    border-radius:8px;padding:6px 10px;font-family:'JetBrains Mono';
+    font-size:.58rem;letter-spacing:.5px;color:var(--go);text-transform:uppercase;
+    margin-bottom:6px;display:inline-block;
+  }
+
+  /* Input */
+  .mentor-input-wrap{
+    padding:10px 12px 12px;border-top:1px solid var(--line-soft);flex-shrink:0;
+  }
+  .mentor-input-row{display:flex;gap:8px;align-items:flex-end}
+  #mentorInput{
+    flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
+    padding:9px 12px;font-family:'Inter';font-size:.84rem;color:var(--ink);
+    resize:none;outline:none;min-height:38px;max-height:100px;line-height:1.45;
+    transition:border-color .2s;
+  }
+  #mentorInput:focus{border-color:rgba(96,165,250,.5)}
+  #mentorInput::placeholder{color:var(--ink-faint)}
+  #mentorSend{
+    width:36px;height:36px;border-radius:9px;flex-shrink:0;
+    background:linear-gradient(135deg,rgba(96,165,250,.2),rgba(96,165,250,.1));
+    border:1px solid rgba(96,165,250,.4);color:var(--active);
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:all .2s;
+  }
+  #mentorSend:hover{background:linear-gradient(135deg,rgba(96,165,250,.35),rgba(96,165,250,.2))}
+  #mentorSend:disabled{opacity:.4;cursor:not-allowed}
+  #mentorSend svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round}
+  .input-hint{font-family:'JetBrains Mono';font-size:.55rem;color:var(--ink-faint);
+    margin-top:5px;letter-spacing:.3px}
+
+  @media (max-width:760px){
+    .hero{grid-template-columns:1fr;gap:30px;text-align:center;padding:40px 0 30px}
+    .eyebrow{justify-content:center}
+    .hero p{margin:0 auto}
+    .gauge{margin:0 auto}
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .week{grid-template-columns:repeat(2,1fr)}
+    .pmeter .ptrack{display:none}
+    .chead h3{font-size:1.05rem}
+    .rung{flex-wrap:wrap}
+    .rung .pay{text-align:left;width:100%}
+    #mentorPanel{width:calc(100vw - 32px);right:16px;bottom:90px}
+    #mentorBubble{right:16px;bottom:16px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+    html{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <div class="brand">
+      <span class="dot"></span>
+      <b>CYBER<span>PATH</span></b>
+    </div>
+    <div class="mini">OPERATOR: ZAR · MISI: <b>SOC ANALYST</b></div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div>
+      <p class="eyebrow">JALUR BLUE TEAM · DARI NOL → JOB-READY</p>
+      <h1>Peta perjalanan lo jadi <em>SOC Analyst</em>.</h1>
+      <p><b>Centang tiap topik yang udah kelar.</b> Gauge di sebelah naik otomatis, jadi lo selalu tau posisi lo di mana — ga nyasar, ga salah arah. Ada mentor AI siap dijawab 24/7.</p>
+    </div>
+    <div class="gauge">
+      <svg width="188" height="188" viewBox="0 0 188 188">
+        <circle class="track" cx="94" cy="94" r="80"></circle>
+        <circle class="fill" id="ring" cx="94" cy="94" r="80"
+          stroke-dasharray="502.65" stroke-dashoffset="502.65"></circle>
+      </svg>
+      <div class="center">
+        <div class="pct"><span id="pctNum">0</span><small>%</small></div>
+        <div class="status" id="statusLabel">RECRUIT</div>
+        <div class="sub" id="statusSub">job-ready meter</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="stats">
+    <div class="stat"><div class="n">4</div><div class="l">Fase belajar</div></div>
+    <div class="stat"><div class="n" id="doneCount">0</div><div class="l">Topik selesai</div></div>
+    <div class="stat"><div class="n" id="totalCount">0</div><div class="l">Total topik</div></div>
+    <div class="stat"><div class="n">7–8<span style="font-size:.9rem;color:var(--ink-faint)"> bln</span></div><div class="l">Estimasi target</div></div>
+  </div>
+
+  <p class="sec-title">// <b>ROADMAP MISI</b> — fase demi fase</p>
+  <div class="timeline" id="timeline"></div>
+
+  <p class="sec-title">// <b>JADWAL MINGGUAN</b> — 1–2 jam weekday, lebih di weekend</p>
+  <div class="week" id="week"></div>
+
+  <p class="sec-title">// <b>JEBAKAN PEMULA</b> — hindari ini</p>
+  <div class="traps" id="traps"></div>
+
+  <p class="sec-title">// <b>TANGGA KARIR</b> — gaji Indonesia</p>
+  <div class="ladder" id="ladder"></div>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p class="quote">Yang ngubah hidup lo bukan baca roadmap ini — tapi <b>buka TryHackMe dan mulai satu room hari ini.</b></p>
+    <button class="reset" id="resetBtn">↺ Reset semua progress</button>
+    <p class="fnote">DIBUAT BUAT <b>ZAR</b> · KONSISTEN &gt; INTENSITAS · GAS TERUS 🔥</p>
+  </div>
+</footer>
+
+<!-- ═══════════════════════════════════════
+     FLOATING AI MENTOR
+═══════════════════════════════════════ -->
+
+<!-- Trigger bubble -->
+<button id="mentorBubble" title="Tanya AI Mentor">
+  <div class="bubble-badge">AI</div>
+  <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/><path d="M12 14c1.5 0 3-.5 3-1.5"/></svg>
+</button>
+
+<!-- Chat panel -->
+<div id="mentorPanel">
+  <div class="mentor-header">
+    <div class="mentor-avatar">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg>
+    </div>
+    <div class="mentor-info">
+      <div class="mentor-name">Ghost Mentor</div>
+      <div class="mentor-status">online · siap bantu</div>
+    </div>
+    <button class="mentor-close" id="mentorClose">✕</button>
+  </div>
+
+  <div class="mentor-suggestions" id="suggestions">
+    <button class="sugg" data-q="Apa bedanya SOC L1, L2, L3?">SOC L1 vs L2 vs L3</button>
+    <button class="sugg" data-q="Gimana cara belajar Nmap yang benar?">Cara belajar Nmap</button>
+    <button class="sugg" data-q="Sertifikat apa yang paling worth buat SOC analyst pemula di Indonesia?">Sertif terbaik</button>
+    <button class="sugg" data-q="Gimana cara bikin writeup yang bagus buat portfolio?">Cara bikin writeup</button>
+    <button class="sugg" data-q="Apa itu MITRE ATT&CK dan kenapa penting?">MITRE ATT&CK</button>
+  </div>
+
+  <div id="mentorMessages">
+    <div class="msg bot">
+      <div class="msg-avatar">
+        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg>
+      </div>
+      <div class="msg-bubble">
+        Yo Zar! Gua Ghost Mentor — AI lo khusus buat jalur SOC Analyst ini. 👾<br><br>
+        Tanya apa aja: konsep yang ga ngerti, cara kerja tools, tips belajar, atau soal karir cybersec di Indonesia. Gua tau konteks roadmap lo sepenuhnya. Gas!
+      </div>
+    </div>
+  </div>
+
+  <div class="mentor-input-wrap">
+    <div class="mentor-input-row">
+      <textarea id="mentorInput" rows="1" placeholder="Tanya sesuatu... (Enter = kirim)"></textarea>
+      <button id="mentorSend">
+        <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+    <div class="input-hint">Enter kirim · Shift+Enter baris baru</div>
+  </div>
+</div>
+
+<script>
+/* ───────── DATA ───────── */
+const PHASES = [
+  {
+    id:'p1', ph:'FASE 01', title:'Foundation',
+    dur:'Bulan 1–2',
+    desc:'Networking · Linux · cara internet bekerja',
+    outcome:'Paham TCP/IP, DNS, HTTP. Navigasi Linux pakai terminal. Ngerti IP, MAC, port & protocol — fondasi semua hal di cybersec.',
+    topics:[
+      {t:'OSI Model & TCP/IP',d:'7 layer + gimana data bergerak di jaringan'},
+      {t:'IP Address & Subnetting',d:'Private vs public, octet, CIDR'},
+      {t:'DNS & HTTP/HTTPS',d:'Gimana domain dan web request bekerja'},
+      {t:'Linux dasar & terminal',d:'cd, ls, grep, permission, bash scripting'},
+      {t:'Port & protocol',d:'TCP/UDP, port umum (22, 80, 443, 554…)'},
+      {t:'Nmap dasar',d:'Scan, service detection (-sV -sC -Pn) — lo udah mulai ✅'}
+    ],
+    res:[
+      {n:'TryHackMe — Pre-Security',u:'https://tryhackme.com/path/outline/presecurity',f:1},
+      {n:'TryHackMe — Linux Fundamentals 1-3',u:'https://tryhackme.com/module/linux-fundamentals',f:1},
+      {n:'Professor Messer — Network+',u:'https://www.professormesser.com/network-plus/n10-009/n10-009-video/',f:1},
+      {n:'NetworkChuck (YouTube)',u:'https://www.youtube.com/@NetworkChuck',f:1}
+    ],
+    labs:['Selesai Linux Fundamentals Part 1, 2, 3','Scan home-lab pakai Nmap, lalu tulis writeup-nya'],
+    checkpoint:'Lo bisa jelasin beda TCP vs UDP dan navigasi Linux tanpa nyari command dasar di Google.'
+  },
+  {
+    id:'p2', ph:'FASE 02', title:'Security Fundamentals',
+    dur:'Bulan 3–4',
+    desc:'Konsep keamanan · ancaman · Security+',
+    outcome:'Paham CIA Triad, threat vs vulnerability, attack vector, kriptografi dasar, firewall & IDS/IPS. Siap ambil sertifikat pertama.',
+    topics:[
+      {t:'CIA Triad & konsep inti',d:'Confidentiality, Integrity, Availability'},
+      {t:'Threats, attacks & vulnerabilities',d:'Malware, phishing, social engineering'},
+      {t:'Cryptography dasar',d:'Hashing, enkripsi, PKI, TLS/SSL'},
+      {t:'IAM & autentikasi',d:'MFA, SSO, least privilege'},
+      {t:'Firewall, IDS/IPS',d:'Konsep pertahanan jaringan'},
+      {t:'Latihan soal Security+',d:'Practice exam sampai konsisten 85%+'}
+    ],
+    res:[
+      {n:'Professor Messer — Security+ SY0-701',u:'https://www.professormesser.com/security-plus/sy0-701/sy0-701-video/sy0-701-comptia-security-plus-course/',f:1},
+      {n:'TryHackMe — Cyber Security 101',u:'https://tryhackme.com/path/outline/cybersecurity101',f:1},
+      {n:'Jason Dion Practice Exam (Udemy)',u:'https://www.udemy.com/course/comptia-security-practice-exams-reg/',f:0},
+      {n:'CompTIA Security+ Guide (Sybex)',u:'https://www.wiley.com/en-us/CompTIA+Security%2B+Study+Guide',f:0}
+    ],
+    labs:['Selesai Cyber Security 101 path','Practice exam Dion 85%+ konsisten 3x berturut'],
+    checkpoint:'Skor practice exam lo 85%+ stabil = siap daftar ujian Security+ beneran. 🎯'
+  },
+  {
+    id:'p3', ph:'FASE 03', title:'SOC Analyst Skills',
+    dur:'Bulan 5–6',
+    desc:'SIEM · threat hunting · incident response',
+    outcome:'Bisa operasikan SIEM (Splunk/Wazuh), analisis log & traffic, threat hunting, dan tulis laporan insiden pakai MITRE ATT&CK.',
+    topics:[
+      {t:'Operasi SOC & alur kerja',d:'Triage → investigate → escalate'},
+      {t:'SIEM (Splunk / Wazuh)',d:'Query log, bikin alert, dashboard'},
+      {t:'Wireshark & traffic analysis',d:'Baca paket, deteksi anomali'},
+      {t:'MITRE ATT&CK framework',d:'Bahasa standar taktik & teknik attacker'},
+      {t:'Threat Intelligence & OSINT',d:'VirusTotal, IOC, threat feed'},
+      {t:'Incident Response & writeup',d:'Dokumentasi insiden profesional'}
+    ],
+    res:[
+      {n:'TryHackMe — SOC Level 1',u:'https://tryhackme.com/path/outline/soclevel1',f:0},
+      {n:'LetsDefend — Blue Team labs',u:'https://letsdefend.io/',f:1},
+      {n:'Splunk Free + tutorial resmi',u:'https://www.splunk.com/en_us/download/splunk-enterprise.html',f:1},
+      {n:'MITRE ATT&CK',u:'https://attack.mitre.org/',f:1}
+    ],
+    labs:['Setup Wazuh atau Splunk di home lab','Investigasi 5 alert + tulis writeup tiap satu'],
+    checkpoint:'Lo bisa ambil 1 alert mentah, investigate, dan tulis laporan insiden yang jelas.'
+  },
+  {
+    id:'p4', ph:'FASE 04', title:'Job Ready',
+    dur:'Bulan 7–8',
+    desc:'Portfolio · CV · interview',
+    outcome:'Portfolio lengkap di GitHub, CV & LinkedIn optimized, siap technical interview SOC dalam bahasa Inggris. Tinggal apply.',
+    topics:[
+      {t:'Bangun portfolio GitHub',d:'5–10 writeup CTF & investigasi'},
+      {t:'Optimasi CV + LinkedIn',d:'Keyword: SOC, Incident Response, SIEM'},
+      {t:'TryHackMe public profile',d:'Showcase rank & badge ke recruiter'},
+      {t:'Mock interview',d:'Latihan jawab pertanyaan skenario'},
+      {t:'Ikut CTF kompetisi',d:'PicoCTF, CTFtime — bukti skill nyata'},
+      {t:'Apply kerja SOC L1',d:'JobStreet, LinkedIn, Glints'}
+    ],
+    res:[
+      {n:'GitHub — host writeup',u:'https://github.com/',f:1},
+      {n:'PicoCTF — CTF pemula',u:'https://picoctf.org/',f:1},
+      {n:'CTFtime — jadwal lomba',u:'https://ctftime.org/',f:1},
+      {n:'LinkedIn',u:'https://www.linkedin.com/',f:1}
+    ],
+    labs:['Publish 5+ writeup rapi di GitHub','Apply minimal 5 lowongan SOC L1'],
+    checkpoint:'Portfolio siap, CV rapi, dan lo bisa cerita pengalaman teknis pakai bahasa Inggris dengan pede.'
+  }
+];
+
+const WEEK = [
+  {d:'Sen',a:'TryHackMe room',h:'1–2 jam'},
+  {d:'Sel',a:'Video Prof. Messer',h:'1 jam'},
+  {d:'Rab',a:'Hands-on lab',h:'1–2 jam'},
+  {d:'Kam',a:'Review + writeup',h:'1 jam'},
+  {d:'Jum',a:'Practice exam',h:'1 jam'},
+  {d:'Sab',a:'Deep-dive project',h:'3–4 jam',w:1},
+  {d:'Min',a:'CTF / eksplor bebas',h:'2–3 jam',w:1}
+];
+
+const TRAPS = [
+  {b:'Tutorial hell',s:'Nonton video terus tapi ga praktek. Skill datang dari ngetik, bukan nonton.'},
+  {b:'Loncat ke tools keren',s:'Flipper Zero & HackRF nanti dulu. Fondasi networking & Linux wajib duluan.'},
+  {b:'Skip dokumentasi',s:'Ga bikin writeup = ga keliatan serius. Writeup yang bedain amatir & pro.'},
+  {b:'Belajar musiman',s:'Marathon seminggu sekali kalah sama 2 jam tiap hari. Konsisten itu kunci.'},
+  {b:'Bootcamp dulu, gratis belakangan',s:'Habisin resource gratis dulu. Bayar mahal kalau udah beneran stuck.'},
+  {b:'Ngapalin, bukan ngerti',s:'Paham cara kerja tools > hafal command. Kalau ngerti, lo bisa improvise.'}
+];
+
+const LADDER = [
+  {lv:'L1',role:'SOC Analyst Junior',sub:'0–2 tahun · entry level',pay:'Rp 5–10 jt',per:'/bulan'},
+  {lv:'L2',role:'SOC Analyst / Sec Analyst',sub:'2–4 tahun · mid level',pay:'Rp 10–20 jt',per:'/bulan'},
+  {lv:'L3',role:'Senior SOC / Threat Hunter',sub:'4+ tahun · senior',pay:'Rp 20–40 jt',per:'/bulan'},
+  {lv:'Lead',role:'SOC Lead / Manager',sub:'Memimpin tim SOC',pay:'Rp 40–70 jt+',per:'/bulan'},
+  {lv:'Top',role:'CISO / Security Architect',sub:'Langit-langit karir',pay:'Miliaran',per:'/tahun'}
+];
+
+/* ───────── STORAGE ───────── */
+const KEY='cyberpath-progress-v1';
+const mem={};
+const Store={
+  async get(k){
+    try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}
+    catch(e){
+      try{const v=localStorage.getItem(k);return v?JSON.parse(v):(mem[k]??null);}
+      catch(_){return mem[k]??null;}
+    }
+  },
+  async set(k,v){
+    try{await window.storage.set(k,JSON.stringify(v));}
+    catch(e){
+      try{localStorage.setItem(k,JSON.stringify(v));}catch(_){mem[k]=v;}
+    }
+  }
+};
+
+let done=new Set();
+
+/* ───────── RENDER TRACKER ───────── */
+const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="#06251f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+function key(pid,i){return pid+'-'+i;}
+let totalTopics=0;
+PHASES.forEach(p=>totalTopics+=p.topics.length);
+
+function renderTimeline(){
+  const root=document.getElementById('timeline');
+  root.innerHTML=PHASES.map((p,pi)=>{
+    const topics=p.topics.map((t,i)=>{
+      const k=key(p.id,i);const on=done.has(k);
+      return `<div class="topic ${on?'checked':''}" data-k="${k}">
+        <div class="box">${CHECK}</div>
+        <div class="tx"><b>${t.t}</b><span>${t.d}</span></div>
+        <button class="topic-ask" data-topic="${t.t}" data-phase="${p.title}">Tanya AI ↗</button>
+      </div>`;
+    }).join('');
+    const res=p.res.map(r=>`<a href="${r.u}" target="_blank" rel="noopener">
+      ${r.n}<span class="pill ${r.f?'free':'paid'}">${r.f?'gratis':'bayar'}</span></a>`).join('');
+    const labs=p.labs.map(l=>`<li>${l}</li>`).join('');
+    return `<div class="phase" id="${p.id}" data-pi="${pi}">
+      <div class="node">${pi+1}</div>
+      <div class="card">
+        <div class="chead" data-toggle="${p.id}">
+          <div class="meta">
+            <div class="ctag"><span class="ph">${p.ph}</span> · <span class="dur">${p.dur}</span></div>
+            <h3>${p.title}</h3>
+            <div class="desc">${p.desc}</div>
+          </div>
+          <div class="pmeter">
+            <span class="ptrack"><span class="pbar" id="bar-${p.id}"></span></span>
+            <span class="pp" id="pp-${p.id}">0%</span>
+          </div>
+          <span class="chev">▼</span>
+        </div>
+        <div class="cbody">
+          <div class="cbody-inner">
+            <div class="outcome"><b>Di akhir fase ini lo bisa</b>${p.outcome}</div>
+            <div class="lbl">Topik inti — centang yang udah kelar</div>
+            ${topics}
+            <div class="lbl">Resource terbaik</div>
+            <div class="res">${res}</div>
+            <div class="lbl">Lab / project</div>
+            <ul class="labs">${labs}</ul>
+            <div class="check-tip">
+              <span class="ic">🎯</span>
+              <div class="tx"><b>Checkpoint</b>${p.checkpoint}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  root.querySelectorAll('[data-toggle]').forEach(h=>{
+    h.addEventListener('click',()=>{
+      document.getElementById(h.dataset.toggle).classList.toggle('open');
+    });
+  });
+
+  root.querySelectorAll('.topic').forEach(t=>{
+    t.addEventListener('click',(e)=>{
+      if(e.target.closest('.topic-ask'))return;
+      const k=t.dataset.k;
+      if(done.has(k))done.delete(k);else done.add(k);
+      t.classList.toggle('checked');
+      Store.set(KEY,[...done]);
+      update();
+    });
+  });
+
+  // "Tanya AI" buttons on each topic
+  root.querySelectorAll('.topic-ask').forEach(btn=>{
+    btn.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      const topic=btn.dataset.topic;
+      const phase=btn.dataset.phase;
+      openMentor();
+      const q=`Jelasin konsep "${topic}" (dari fase ${phase}) dengan bahasa simpel dan kasih contoh praktisnya dong.`;
+      askMentor(q, `📌 ${topic}`);
+    });
+  });
+}
+
+function renderWeek(){
+  document.getElementById('week').innerHTML=WEEK.map(d=>
+    `<div class="day ${d.w?'wknd':''}"><div class="d">${d.d}</div>
+     <div class="act">${d.a}</div><div class="hrs">${d.h}</div></div>`).join('');
+}
+function renderTraps(){
+  document.getElementById('traps').innerHTML=TRAPS.map(t=>
+    `<div class="trap"><b>${t.b}</b><span>${t.s}</span></div>`).join('');
+}
+function renderLadder(){
+  document.getElementById('ladder').innerHTML=LADDER.map(r=>
+    `<div class="rung"><span class="lv">${r.lv}</span>
+     <div class="role"><b>${r.role}</b><span>${r.sub}</span></div>
+     <div class="pay">${r.pay}<small>${r.per}</small></div></div>`).join('');
+}
+
+/* ───────── UPDATE STATE ───────── */
+const CIRC=502.65;
+function statusFor(p){
+  if(p>=100)return['JOB-READY 🎯','siap apply kerja',getCss('--go')];
+  if(p>=76) return['HAMPIR SIAP','tinggal finishing',getCss('--go')];
+  if(p>=51) return['SOC APPRENTICE','skill mulai kebentuk',getCss('--active')];
+  if(p>=26) return['JUNIOR IN TRAINING','fondasi makin kuat',getCss('--active')];
+  if(p>=1)  return['TRAINEE','udah mulai jalan',getCss('--active')];
+  return     ['RECRUIT','mulai dari sini',getCss('--active')];
+}
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+
+function update(){
+  const total=totalTopics;
+  const d=done.size;
+  const pct=total?Math.round(d/total*100):0;
+  document.getElementById('ring').style.strokeDashoffset=CIRC*(1-pct/100);
+  document.getElementById('pctNum').textContent=pct;
+  document.getElementById('doneCount').textContent=d;
+  document.getElementById('totalCount').textContent=total;
+  const[st,sub,col]=statusFor(pct);
+  const sl=document.getElementById('statusLabel');
+  sl.textContent=st;sl.style.color=col;sl.style.borderColor=col+'55';
+  document.getElementById('statusSub').textContent=sub;
+  document.getElementById('ring').style.stroke=col;
+  let firstOpen=null;
+  PHASES.forEach((p,pi)=>{
+    let c=0;p.topics.forEach((t,i)=>{if(done.has(key(p.id,i)))c++;});
+    const pp=Math.round(c/p.topics.length*100);
+    document.getElementById('bar-'+p.id).style.width=pp+'%';
+    document.getElementById('pp-'+p.id).textContent=pp+'%';
+    const el=document.getElementById(p.id);
+    el.classList.remove('done','current');
+    if(pp>=100){el.classList.add('done');el.querySelector('.node').innerHTML=CHECK;}
+    else{el.querySelector('.node').textContent=pi+1;}
+    if(pp<100&&firstOpen===null){firstOpen=p.id;el.classList.add('current');}
+  });
+}
+
+/* ═══════════════════════════════════════════
+   AI MENTOR LOGIC
+═══════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────
+   KONFIGURASI — BACA INI BRO
+   ─────────────────────────────────────────────
+   Mentor AI butuh "proxy" kecil yang nyimpen API key
+   secara AMAN di server (BUKAN di file ini).
+
+   JANGAN PERNAH tempel API key langsung di sini —
+   repo lo Public, key bakal kecolong.
+
+   Langkah: deploy Cloudflare Worker (gratis, ada di
+   file cloudflare-worker.js + panduan di chat), terus
+   tempel URL Worker-nya di bawah ini.
+
+   Contoh: 'https://cyberpath-mentor.namalo.workers.dev'
+───────────────────────────────────────────── */
+const CONFIG = {
+  PROXY_URL: 'https://ddeploy.nfazar24.workers.dev'
+};
+
+const MENTOR_SYSTEM = `Kamu adalah Ghost Mentor — AI mentor pribadi untuk Zar yang lagi belajar cybersecurity dengan tujuan jadi SOC Analyst.
+
+Konteks roadmap Zar:
+- Fase 1 (Bulan 1-2): Foundation — OSI Model, TCP/IP, Linux, Nmap, subnetting
+- Fase 2 (Bulan 3-4): Security Fundamentals — CIA Triad, threats, cryptography, Security+
+- Fase 3 (Bulan 5-6): SOC Skills — SIEM (Splunk/Wazuh), Wireshark, MITRE ATT&CK, incident response
+- Fase 4 (Bulan 7-8): Job Ready — portfolio GitHub, CV, CTF, interview
+
+Gaya komunikasi:
+- Bahasa Indonesia campur sedikit Inggris teknis, casual tapi informatif
+- Panggil user "bro" atau "Zar"
+- Jawaban padat, to-the-point, langsung kasih contoh praktis
+- Kalau ada command/code, tampilkan dalam format code
+- Kalau topik kompleks, bagi jadi poin-poin singkat
+- Selalu dorong praktek langsung, bukan cuma teori
+- Max 3-4 paragraf per jawaban, kecuali kalau diminta detail`;
+
+let chatHistory = [];
+let isTyping = false;
+
+function getCurrentPhaseContext(){
+  let current='';
+  PHASES.forEach((p,pi)=>{
+    let c=0;
+    p.topics.forEach((t,i)=>{if(done.has(key(p.id,i)))c++;});
+    const pp=Math.round(c/p.topics.length*100);
+    if(pp<100&&!current)current=p.title+' ('+pp+'% selesai)';
+  });
+  return current||'semua fase selesai!';
+}
+
+function appendMsg(role,text,ctx=''){
+  const msgs=document.getElementById('mentorMessages');
+  const div=document.createElement('div');
+  div.className='msg '+role;
+
+  const avatarSvg=role==='bot'
+    ?`<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg>`
+    :'ZAR';
+
+  const ctxHtml=ctx?`<div class="ctx-chip">${ctx}</div>`:'';
+
+  div.innerHTML=`
+    <div class="msg-avatar">${role==='bot'?`<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg>`:'ZAR'}</div>
+    <div class="msg-bubble">${ctxHtml}${text}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+  return div;
+}
+
+function showTyping(){
+  const msgs=document.getElementById('mentorMessages');
+  const div=document.createElement('div');
+  div.className='msg bot';div.id='typingIndicator';
+  div.innerHTML=`
+    <div class="msg-avatar"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg></div>
+    <div class="msg-bubble"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function removeTyping(){
+  const el=document.getElementById('typingIndicator');
+  if(el)el.remove();
+}
+
+function formatBotText(text){
+  // basic markdown-ish: bold, code inline, newlines
+  return text
+    .replace(/```([\s\S]*?)```/g,'<code style="display:block;background:rgba(0,0,0,.4);border:1px solid #222c3a;border-radius:6px;padding:8px 10px;margin:6px 0;font-family:\'JetBrains Mono\',monospace;font-size:.78rem;line-height:1.6;white-space:pre-wrap">$1</code>')
+    .replace(/`([^`]+)`/g,'<code style="background:rgba(96,165,250,.12);border-radius:4px;padding:1px 5px;font-family:\'JetBrains Mono\',monospace;font-size:.82rem;color:#93c5fd">$1</code>')
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
+}
+
+async function askMentor(question, ctxLabel=''){
+  if(isTyping)return;
+
+  // Belum dikonfigurasi → kasih instruksi, jangan pura-pura error koneksi
+  if(!CONFIG.PROXY_URL){
+    appendMsg('user', question);
+    appendMsg('bot','🔌 <strong>Mentor belum nyambung ke server.</strong><br><br>'+
+      'Buat jawab beneran, gua butuh Cloudflare Worker (proxy gratis) yang nyimpen API key dengan aman. '+
+      'Buka file <code style="background:rgba(96,165,250,.12);border-radius:4px;padding:1px 5px;font-family:monospace">cloudflare-worker.js</code> dan ikutin panduan setup-nya. '+
+      'Setelah deploy, tempel URL Worker-nya di bagian <code style="background:rgba(96,165,250,.12);border-radius:4px;padding:1px 5px;font-family:monospace">CONFIG.PROXY_URL</code> di file HTML ini.<br><br>'+
+      '⚠️ Jangan tempel API key langsung di sini ya — repo lo Public.');
+    return;
+  }
+
+  isTyping=true;
+  document.getElementById('mentorSend').disabled=true;
+
+  appendMsg('user', question);
+  chatHistory.push({role:'user', content: question + '\n\n[Konteks: fase aktif saat ini = '+getCurrentPhaseContext()+']'});
+  showTyping();
+
+  try{
+    const res=await fetch(CONFIG.PROXY_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:MENTOR_SYSTEM,
+        messages:chatHistory
+      })
+    });
+    const data=await res.json();
+    removeTyping();
+
+    if(data.error){
+      appendMsg('bot','⚠️ Server bales error: '+(data.error.message||JSON.stringify(data.error))+'<br><br>Cek API key di Cloudflare atau saldo Anthropic lo, bro.');
+    }else{
+      const replyText=data.content?.find(b=>b.type==='text')?.text || 'Hmm, gua ga bisa jawab saat ini. Coba lagi bro.';
+      chatHistory.push({role:'assistant',content:replyText});
+      appendMsg('bot', formatBotText(replyText), ctxLabel);
+    }
+
+  }catch(err){
+    removeTyping();
+    appendMsg('bot','⚠️ Ga bisa nyambung ke proxy. Cek URL Worker di CONFIG.PROXY_URL udah bener belum, bro.');
+    console.error(err);
+  }
+
+  isTyping=false;
+  document.getElementById('mentorSend').disabled=false;
+}
+
+/* ── Panel open/close ── */
+function openMentor(){
+  document.getElementById('mentorPanel').classList.add('open');
+  document.getElementById('mentorBubble').classList.add('open');
+  document.getElementById('mentorInput').focus();
+}
+function closeMentor(){
+  document.getElementById('mentorPanel').classList.remove('open');
+  document.getElementById('mentorBubble').classList.remove('open');
+}
+
+document.getElementById('mentorBubble').addEventListener('click',()=>{
+  const isOpen=document.getElementById('mentorPanel').classList.contains('open');
+  isOpen?closeMentor():openMentor();
+});
+document.getElementById('mentorClose').addEventListener('click',closeMentor);
+
+/* ── Send ── */
+function sendFromInput(){
+  const inp=document.getElementById('mentorInput');
+  const q=inp.value.trim();
+  if(!q||isTyping)return;
+  inp.value='';
+  inp.style.height='auto';
+  askMentor(q);
+}
+document.getElementById('mentorSend').addEventListener('click',sendFromInput);
+document.getElementById('mentorInput').addEventListener('keydown',(e)=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendFromInput();}
+});
+
+// Auto-resize textarea
+document.getElementById('mentorInput').addEventListener('input',function(){
+  this.style.height='auto';
+  this.style.height=Math.min(this.scrollHeight,100)+'px';
+});
+
+// Suggestion chips
+document.getElementById('suggestions').querySelectorAll('.sugg').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    openMentor();
+    askMentor(btn.dataset.q);
+  });
+});
+
+/* ───────── INIT ───────── */
+(async function(){
+  // Status mentor jujur sesuai konfigurasi
+  if(!CONFIG.PROXY_URL){
+    const st=document.querySelector('.mentor-status');
+    if(st){st.textContent='perlu setup';st.style.color='var(--warn)';}
+  }
+
+  const saved=await Store.get(KEY);
+  if(Array.isArray(saved))done=new Set(saved);
+  renderTimeline();renderWeek();renderTraps();renderLadder();
+  update();
+  const cur=document.querySelector('.phase.current')||document.getElementById('p1');
+  if(cur)cur.classList.add('open');
+
+  document.getElementById('resetBtn').addEventListener('click',async()=>{
+    if(!confirm('Reset semua progress? Centang lo bakal kosong lagi.'))return;
+    done=new Set();await Store.set(KEY,[]);
+    document.querySelectorAll('.topic.checked').forEach(t=>t.classList.remove('checked'));
+    update();
+  });
+})();
+</script>
+</body>
+</html>
